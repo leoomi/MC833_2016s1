@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #define SERVER_PORT 31472
@@ -14,11 +15,12 @@ int main(int argc, char * argv[])
 {
   FILE *fp;
   struct hostent *hp;
-  struct sockaddr_in sin;
+  struct sockaddr_in sin, local_info;
   char *host;
   char buf[MAX_LINE];
   int s;
   int len;
+  
   if (argc==2) {
     host = argv[1];
   }
@@ -45,11 +47,21 @@ int main(int argc, char * argv[])
     perror("simplex-talk: socket");
     exit(1);
   }
+  
   if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
     perror("simplex-talk: connect");
     close(s);
     exit(1);
   }
+
+  int s_len = sizeof(local_info);
+  if(getsockname(s, &local_info, &s_len) < 0){
+    perror("getsockname() failed");
+    close(s);
+    exit(1);
+  }
+  printf("Endereco de IP local: %s\n", inet_ntoa(local_info.sin_addr));
+  printf("Porta local: %d\n", (int)ntohs(local_info.sin_port));
 
   /* main loop: get and send lines of text */
   while (fgets(buf, sizeof(buf), stdin)) {
