@@ -42,17 +42,20 @@ int main()
       exit(1);
     }
 
-          re_len = sizeof(typeof(struct sockaddr_in));
-      if(getpeername(new_s, &remote_info, &re_len) < 0){
-	perror("getpeername() failed");
-	close(new_s);
-	exit(1);
-      }
-      
-      printf("teste");
-      printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
-      printf("Porta do cliente: %s\n", ntohs(remote_info.sin_port));
-   
+    re_len = sizeof(typeof(struct sockaddr_in));
+    if(getpeername(new_s, &remote_info, &re_len) < 0){
+      perror("getpeername() failed");
+      close(new_s);
+      exit(1);
+    }
+    char *t= inet_ntoa(remote_info.sin_addr);
+    int t2 = ntohs(remote_info.sin_port);
+    printf("%s", t);
+    printf("%d", t2);
+    /*
+    printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
+    printf("Porta do cliente: %s\n", ntohs(remote_info.sin_port));
+    */
     while (len = recv(new_s, buf, sizeof(buf), 0)){
       fputs(buf, stdout);
       send(new_s, buf, len, 0);
