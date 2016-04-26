@@ -12,10 +12,11 @@
 
 int main()
 {
-  struct sockaddr_in sin;
+  struct sockaddr_in sin, remote_info;
   char buf[MAX_LINE];
   int len;
   int s, new_s;
+  int re_len;
 
   /* build address data structure */
   bzero((char *)&sin, sizeof(sin));
@@ -40,6 +41,18 @@ int main()
       perror("simplex-talk: accept");
       exit(1);
     }
+
+          re_len = sizeof(typeof(struct sockaddr_in));
+      if(getpeername(new_s, &remote_info, &re_len) < 0){
+	perror("getpeername() failed");
+	close(new_s);
+	exit(1);
+      }
+      
+      printf("teste");
+      printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
+      printf("Porta do cliente: %s\n", ntohs(remote_info.sin_port));
+   
     while (len = recv(new_s, buf, sizeof(buf), 0)){
       fputs(buf, stdout);
       send(new_s, buf, len, 0);
