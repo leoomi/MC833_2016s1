@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #define SERVER_PORT 31472
@@ -48,14 +49,10 @@ int main()
       close(new_s);
       exit(1);
     }
-    char *t= inet_ntoa(remote_info.sin_addr);
-    int t2 = ntohs(remote_info.sin_port);
-    printf("%s", t);
-    printf("%d", t2);
-    /*
+    
     printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
-    printf("Porta do cliente: %s\n", ntohs(remote_info.sin_port));
-    */
+    printf("Porta do cliente: %d\n", ntohs(remote_info.sin_port));
+    
     while (len = recv(new_s, buf, sizeof(buf), 0)){
       fputs(buf, stdout);
       send(new_s, buf, len, 0);
