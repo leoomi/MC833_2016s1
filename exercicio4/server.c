@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -42,21 +43,24 @@ int main()
       perror("simplex-talk: accept");
       exit(1);
     }
-
-    re_len = sizeof(typeof(struct sockaddr_in));
-    if(getpeername(new_s, &remote_info, &re_len) < 0){
-      perror("getpeername() failed");
+    
+    pid_t pid = fork();
+    if(pid == 0){
+      re_len = sizeof(typeof(struct sockaddr_in));
+      if(getpeername(new_s, &remote_info, &re_len) < 0){
+	perror("getpeername() failed");
+	close(new_s);
+	exit(1);
+      }
+    
+      printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
+      printf("Porta do cliente: %d\n", ntohs(remote_info.sin_port));
+    
+      while (len = recv(new_s, buf, sizeof(buf), 0)){
+	fputs(buf, stdout);
+	send(new_s, buf, len, 0);
+      }
       close(new_s);
-      exit(1);
     }
-    
-    printf("Endereco IP do cliente: %s\n", inet_ntoa(remote_info.sin_addr));
-    printf("Porta do cliente: %d\n", ntohs(remote_info.sin_port));
-    
-    while (len = recv(new_s, buf, sizeof(buf), 0)){
-      fputs(buf, stdout);
-      send(new_s, buf, len, 0);
-    }
-    close(new_s);
   }
 }
