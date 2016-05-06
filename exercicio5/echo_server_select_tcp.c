@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <sys/select.h>
 #include <string.h>
+#include <errno.h>
 
 #define LISTENQ 5
 #define MAXLINE 64
@@ -26,6 +27,8 @@ int main(int argc, char **argv)
   socklen_t clilen;
   struct sockaddr_in	cliaddr, servaddr;
 
+  printf("%d", EBADF);
+  
   if ((listenfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket error");
     return 1;
@@ -57,7 +60,10 @@ int main(int argc, char **argv)
 
   for ( ; ; ) {
     rset = allset;		/* structure assignment */
-    nready = select(maxfd+1, &rset, NULL, NULL, NULL);
+    if(nready = select(maxfd+1, &rset, NULL, NULL, NULL) < 0){
+      perror("Select() error");
+      exit(1);
+    }
 
     if (FD_ISSET(listenfd, &rset)) {	/* new client connection */
       clilen = sizeof(cliaddr);
