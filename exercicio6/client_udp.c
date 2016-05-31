@@ -12,14 +12,15 @@
 
 int main(int argc, char * argv[]){
   FILE *fp;
+  FILE *devnull = fopen("/dev/null", "w");
   struct hostent *hp;
-  struct sockaddr_in sin;
+  struct sockaddr_in sin, server_info;
   char *host;
   char buf[MAX_LINE];
   int s;
   int len;
-  socklen_t addr_size;
-  
+  socklen_t addr_size, addr_size_server;
+
   if (argc==2) {
     host = argv[1];
   }
@@ -53,10 +54,15 @@ int main(int argc, char * argv[]){
   while (fgets(buf, sizeof(buf), stdin)) {
     buf[MAX_LINE-1] = '\0';
     len = strlen(buf) + 1;
-    sendto(s, buf, len, 0, (struct sockaddr *)&sin, addr_size);
-  
-    len = recvfrom(s, buf, sizeof(buf), 0, NULL, NULL);
-    fputs(buf, stdout);
+    sendto(s, buf, len, 0, (struct sockaddr *)&sin, addr_size);  
+    len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&server_info, &addr_size_server);
+    printf("From IP: %s, port: %d\n", inet_ntoa(server_info.sin_addr), (int)ntohs(server_info.sin_port));
+    if(strcmp(host, inet_ntoa(server_info.sin_addr)) == 0 && (int)ntohs(server_info.sin_port) == SERVER_PORT){
+      fputs(buf, stdout);
+      printf("%s", buf);}
+    else{
+      fputs(buf, devnull);
+    }
   }
   
 }
