@@ -16,6 +16,8 @@ int main()
   char buf[MAX_LINE];
   int len;
   int s, new_s;
+  struct sockaddr_storage client_info;
+  socklen_t addr_size = sizeof client_info;
 
   /* build address data structure */
   bzero((char *)&sin, sizeof(sin));
@@ -24,7 +26,7 @@ int main()
   sin.sin_port = htons(SERVER_PORT);
 
   /* setup passive open */
-  if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("simplex-talk: socket");
     exit(1);
   }
@@ -32,18 +34,12 @@ int main()
     perror("simplex-talk: bind");
     exit(1);
   }
-  listen(s, MAX_PENDING);
 
-  /* wait for connection, then receive and print text */
+  /* Receive frm socket and print text */
   while(1) {
-    if ((new_s = accept(s, (struct sockaddr *)&sin, &len)) < 0) {
-      perror("simplex-talk: accept");
-      exit(1);
-    }
-    while (len = recv(new_s, buf, sizeof(buf), 0)){
-      fputs(buf, stdout);
-      send(new_s, buf, len, 0);
-    }
-    close(new_s);
+    len = recvfrom(s, buf, sizeof(buf), 0,(struct sockaddr *)&client_info, &addr_size);
+    fputs(buf, stdout);
+    //send(new_s, buf, len, 0);
   }
+  close(s);
 }
