@@ -13,15 +13,12 @@
 int main(int argc, char * argv[]){
   FILE *fp;
   struct hostent *hp;
-  struct sockaddr_in sin, local_info;
+  struct sockaddr_in sin;
   char *host;
   char buf[MAX_LINE];
   int s;
   int len;
-  int s_len = sizeof(local_info);
-  struct sockaddr_in serverAddr;
   socklen_t addr_size;
-  addr_size = sizeof serverAddr;
   
   if (argc==2) {
     host = argv[1];
@@ -50,28 +47,16 @@ int main(int argc, char * argv[]){
     exit(1);
   }
 
-  if(getsockname(s, &local_info, &s_len) < 0){
-    perror("getsockname() failed");
-    close(s);
-    exit(1);
-  }
-  printf("Endereco de IP local: %s\n", inet_ntoa(local_info.sin_addr));
-  printf("Porta local: %d\n", (int)ntohs(local_info.sin_port));
-
+  addr_size = sizeof sin;
+  
   /* main loop: get and send lines of text */
   while (fgets(buf, sizeof(buf), stdin)) {
     buf[MAX_LINE-1] = '\0';
     len = strlen(buf) + 1;
-    printf("Você escreveu: %s", buf);
-    sendto(s, buf, len, 0, (struct sockaddr *)&serverAddr, &addr_size);
+    sendto(s, buf, len, 0, (struct sockaddr *)&sin, addr_size);
   
-  //len = recvfrom(s, buf, sizeof(buf), 0);
-  //fputs(buf, stdout);
-
-    if(strcmp(buf, "/q\n") == 0){
-      printf("Bye!");
-      close(s);
-      exit(0);
-    }
+    len = recvfrom(s, buf, sizeof(buf), 0, NULL, NULL);
+    fputs(buf, stdout);
   }
+  
 }

@@ -39,7 +39,7 @@ int main()
   while(1) {
     len = recvfrom(s, buf, sizeof(buf), 0,(struct sockaddr *)&client_info, &addr_size);
     fputs(buf, stdout);
-    //send(new_s, buf, len, 0);
+    sendto(s, buf, len, 0,(struct sockaddr *)&client_info,addr_size);
   }
   close(s);
 }
