@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 
 #define SERVER_PORT 31472
@@ -12,12 +13,11 @@
 
 int main()
 {
-  struct sockaddr_in sin;
+  struct sockaddr_in sin, client_info;
   char buf[MAX_LINE];
   int len;
   int s, new_s;
-  struct sockaddr_storage client_info;
-  socklen_t addr_size = sizeof client_info;
+  socklen_t addr_size;
 
   /* build address data structure */
   bzero((char *)&sin, sizeof(sin));
@@ -35,11 +35,16 @@ int main()
     exit(1);
   }
 
+  addr_size = sizeof sin;
+  
   /* Receive frm socket and print text */
   while(1) {
     len = recvfrom(s, buf, sizeof(buf), 0,(struct sockaddr *)&client_info, &addr_size);
+    printf("From IP: %s:%d\n", inet_ntoa(client_info.sin_addr), (int)ntohs(client_info.sin_port));
     fputs(buf, stdout);
-    sendto(s, buf, len, 0,(struct sockaddr *)&client_info,addr_size);
+    addr_size = sizeof client_info;
+    sendto(s, buf, len, 0,(struct sockaddr *)&client_info, addr_size);
+    printf("Message sent to to IP: %s:%d\n|--------------------------|\n", inet_ntoa(client_info.sin_addr), (int)ntohs(client_info.sin_port));
   }
   close(s);
 }
