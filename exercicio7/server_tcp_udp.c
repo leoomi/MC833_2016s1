@@ -24,7 +24,7 @@ int main()
   pid_t childpid;
   fd_set rset;
   ssize_t n;
-  struct sockaddr_storage client_info;
+  struct sockaddr_in client_info;
   socklen_t addr_size = sizeof client_info;
 
   /*TCP*/
@@ -35,34 +35,40 @@ int main()
   sin.sin_addr.s_addr = INADDR_ANY;
   sin.sin_port = htons(SERVER_PORT);
 
-  setsockopt(stcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-	     
   /* setup passive open */
-  if ((stcp = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((stcp = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("simplex-talk: socket");
     exit(1);
   }
+
+  setsockopt(stcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+ 
   if ((bind(stcp, (struct sockaddr *)&sin, sizeof(sin))) < 0) {
-    perror("simplex-talk: bind");
+    perror("simplex-talk: bind TCP");
     exit(1);
   }
 
   listen(stcp, MAX_PENDING);
   
   /*UDP*/
-  if ((sudp = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
+  if ((sudp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("simplex-talk: socket");
     exit(1);
   }
+
+  bzero((char *)&sin, sizeof(sin));
+  sin.sin_family = AF_INET;
+  sin.sin_addr.s_addr = INADDR_ANY;
+  sin.sin_port = htons(SERVER_PORT);
+  
   if ((bind(sudp, (struct sockaddr *)&sin, sizeof(sin))) < 0) {
-    perror("simplex-talk: bind");
+    perror("simplex-talk: bind UDP");
     exit(1);
   }
   
   /* Receive frm socket and print text */
- 
     FD_ZERO(&rset);
-     maxfd = stcp + 1;
+    maxfd = sudp + 1;
     for ( ; ; ) {
         FD_SET(stcp, &rset);
         FD_SET(sudp, &rset);
@@ -72,22 +78,25 @@ int main()
          }
 
          if (FD_ISSET(stcp, &rset)) {
-            len = sizeof(client_info);
-            connfd = accept(stcp, (struct sockaddr *) &client_info, &len);
+            connfd = accept(stcp, (struct sockaddr *) &client_info,&addr_size);
 
               if ( (childpid = fork()) == 0) { 
                   close(stcp);    
-                  fputs(buf, stdout);   
+                  len = recv(stcp, buf, sizeof(buf), 0);
+		  fputs(buf, stdout);
+		  send(stcp, buf, len, 0);  
                   exit(0);
                }
                close(connfd);
 	 }
 
-          if (FD_ISSET(sudp, &rset)) {
-              len = sizeof(client_info);
-              n = recvfrom(sudp, buf, MAX_LINE, 0, (struct sockaddr *) &client_info, &len);
-	      fputs(buf, stdout);
-              sendto(sudp, buf, n, 0, (struct sockaddr *) &client_info, len);
-          }
+         if (FD_ISSET(sudp, &rset)) {
+	   len = recvfrom(sudp, buf, sizeof(buf), 0, (struct sockaddr *) &client_info, &addr_size);
+	   fputs(buf, stdout);
+           sendto(sudp, buf, len, 0, (struct sockaddr *) &client_info, addr_size);
+          }     
      }
+    	close(stcp);
+	close(sudp);
 }
+
