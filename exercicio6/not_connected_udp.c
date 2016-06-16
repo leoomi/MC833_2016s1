@@ -10,17 +10,15 @@
 #define SERVER_PORT 31472
 #define MAX_LINE 256
 
-int main(int argc, char * argv[])
-
-{
-  FILE *fp;
+int main(int argc, char * argv[]){
   struct hostent *hp;
-  struct sockaddr_in sin, local_info;
+  struct sockaddr_in sin, server_info;
   char *host;
   char buf[MAX_LINE];
   int s;
   int len;
-  
+  socklen_t addr_size, addr_size_server;
+
   if (argc==2) {
     host = argv[1];
   }
@@ -43,38 +41,22 @@ int main(int argc, char * argv[])
   sin.sin_port = htons(SERVER_PORT);
 
   /* active open */
-  if ((s = socket(PF_INET, SOCK_STREAM, 0)) < 0) {
+  if ((s = socket(PF_INET, SOCK_DGRAM, 0)) < 0) {
     perror("simplex-talk: socket");
     exit(1);
   }
-  
-   if (connect(s, (struct sockaddr *)&sin, sizeof(sin)) < 0) { 
-     perror("simplex-talk: connect"); 
-     close(s);
-     exit(1); 
-   } 
 
-  int s_len = sizeof(local_info);
-  if(getsockname(s, &local_info, &s_len) < 0){
-    perror("getsockname() failed");
-    close(s);
-    exit(1);
-  }
-  printf("Endereco de IP local: %s\n", inet_ntoa(local_info.sin_addr));
-  printf("Porta local: %d\n", (int)ntohs(local_info.sin_port));
-
-  /* main loop: get and send lines of text */
-  while (fgets(buf, sizeof(buf), stdin)) {
-    buf[MAX_LINE-1] = '\0';
-    len = strlen(buf) + 1;
-    send(s, buf, len, 0);
-    len = recv(s, buf, sizeof(buf), 0);
+  addr_size = sizeof sin;
+  int i;
+  char msg[17] = "teste de tempo";
+  len = strlen(msg) + 1;
+  for(i = 0; i < 10000; i++) {
+    printf("%d ", i);
+    sendto(s, msg, len, 0, (struct sockaddr *)&sin, addr_size);
+    //do{
+      len = recvfrom(s, buf, sizeof(buf), 0, (struct sockaddr *)&server_info, &addr_size_server);
+      //}while(strcmp(host, inet_ntoa(server_info.sin_addr)) != 0 || (int)ntohs(server_info.sin_port) != SERVER_PORT);
     fputs(buf, stdout);
-
-    if(strcmp(buf, "/q\n") == 0){
-      printf("Bye!");
-      close(s);
-      exit(1);
-    }
+    printf("\n");
   }
 }
