@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <errno.h>
 #include <sys/select.h>
@@ -41,14 +42,20 @@ int main()
     exit(1);
   }
 
-  setsockopt(stcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
+  if(setsockopt(stcp, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) < 0){
+    perror("setsockopt error");
+    exit(1);
+  }
  
   if ((bind(stcp, (struct sockaddr *)&sin, sizeof(sin))) < 0) {
     perror("simplex-talk: bind TCP");
     exit(1);
   }
 
-  listen(stcp, MAX_PENDING);
+  if(listen(stcp, MAX_PENDING) < 0){
+    perror("listen error");
+    exit(1);
+  }
   
   /*UDP*/
   if ((sudp = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -67,36 +74,39 @@ int main()
   }
   
   /* Receive frm socket and print text */
-    FD_ZERO(&rset);
-    maxfd = sudp + 1;
-    for ( ; ; ) {
-        FD_SET(stcp, &rset);
-        FD_SET(sudp, &rset);
-        if ( (nready = select(maxfd, &rset, NULL, NULL, NULL)) < 0) {
-	  perror("Select() error");
-	  exit(1);
-         }
+  FD_ZERO(&rset);
+  maxfd = sudp + 1;
+  for ( ; ; ) {
+    FD_SET(stcp, &rset);
+    FD_SET(sudp, &rset);
+    if ( (nready = select(maxfd, &rset, NULL, NULL, NULL)) < 0) {
+      perror("Select() error");
+      exit(1);
+    }
 
-         if (FD_ISSET(stcp, &rset)) {
-            connfd = accept(stcp, (struct sockaddr *) &client_info,&addr_size);
+    if (FD_ISSET(stcp, &rset)) {
+      connfd = accept(stcp, (struct sockaddr *) &client_info,&addr_size);
+      printf("New TCP client IP: %s:%d\n", inet_ntoa(client_info.sin_addr), (int)ntohs(client_info.sin_port));
 
-              if ( (childpid = fork()) == 0) { 
-                  close(stcp);    
-                  len = recv(stcp, buf, sizeof(buf), 0);
-		  fputs(buf, stdout);
-		  send(stcp, buf, len, 0);  
-                  exit(0);
-               }
-               close(connfd);
-	 }
+      if ( (childpid = fork()) == 0) { 
+	while(1){
+	  len = recv(connfd, buf, sizeof(buf), 0);
+	  send(connfd, buf, len, 0);
+	}
+	close(connfd);
+	exit(0);
+      }
+    }
 
-         if (FD_ISSET(sudp, &rset)) {
-	   len = recvfrom(sudp, buf, sizeof(buf), 0, (struct sockaddr *) &client_info, &addr_size);
-	   fputs(buf, stdout);
-           sendto(sudp, buf, len, 0, (struct sockaddr *) &client_info, addr_size);
-          }     
-     }
-    	close(stcp);
-	close(sudp);
+    if (FD_ISSET(sudp, &rset)) {
+      len = recvfrom(sudp, buf, sizeof(buf), 0, (struct sockaddr *) &client_info, &addr_size);
+      printf("From IP: %s:%d\n", inet_ntoa(client_info.sin_addr), (int)ntohs(client_info.sin_port));
+      fputs(buf, stdout);
+      addr_size = sizeof client_info;
+      sendto(sudp, buf, len, 0, (struct sockaddr *) &client_info, addr_size);
+    }     
+  }
+  close(connfd);
+  close(stcp);
+  close(sudp);
 }
-
